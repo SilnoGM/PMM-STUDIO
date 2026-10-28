@@ -12,3 +12,32 @@ body {
 body {
   @apply bg-slate-50 text-slate-900 antialiased;
 }
+
+/* TipTap 编辑区：没有引入 typography 插件，这里补齐最基本的排版 */
+.tiptap h2 {
+  @apply mt-4 mb-2 text-lg font-semibold;
+}
+
+.tiptap h3 {
+  @apply mt-3 mb-1.5 text-base font-semibold;
+}
+
+.tiptap p {
+  @apply mb-2 leading-relaxed;
+}
+
+.tiptap ul {
+  @apply mb-2 list-disc pl-5;
+}
+
+.tiptap ol {
+  @apply mb-2 list-decimal pl-5;
+}
+
+.tiptap blockquote {
+  @apply mb-2 border-l-2 border-slate-300 pl-3 text-slate-600;
+}
+
+.tiptap pre {
+  @apply mb-2 overflow-x-auto rounded bg-slate-100 p-2 font-mono text-xs;
+}

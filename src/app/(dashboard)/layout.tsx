@@ -34,6 +34,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <Link href="/spec-fields" className="text-slate-600 hover:text-slate-900">
               参数字典
             </Link>
+            <Link href="/materials" className="text-slate-600 hover:text-slate-900">
+              资料
+            </Link>
             {session.isAdmin ? (
               <Link href="/admin/accounts" className="text-slate-600 hover:text-slate-900">
                 账号管理
