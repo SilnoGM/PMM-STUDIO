@@ -386,3 +386,70 @@ export async function addYouTubeVideo(
   revalidatePath(`/products/${productId}`);
   return { success: "已添加 YouTube 视频" };
 }
+
+/** 3D 模型上限 30 MB，见 docs/技术选型方案.md §9 */
+const MODEL_MAX_BYTES = 30 * 1024 * 1024;
+
+export async function uploadProductModel(
+  _previous: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await requireAccount();
+  const productId = String(formData.get("productId") ?? "");
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "请选择 .glb 文件" };
+  }
+  if (!file.name.toLowerCase().endsWith(".glb")) {
+    return { error: "目前只支持 .glb（自包含的 glTF 二进制）" };
+  }
+  if (file.size > MODEL_MAX_BYTES) {
+    return { error: "3D 模型不能超过 30 MB" };
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  // GLB 头 4 字节固定是 ASCII "glTF"，用它挡掉改扩展名的假文件
+  if (buffer.subarray(0, 4).toString("ascii") !== "glTF") {
+    return { error: "文件内容不是有效的 GLB 模型" };
+  }
+
+  const product = await setAccountContext(session.accountId, () =>
+    db.product.findFirst({ where: { id: productId }, select: { id: true } }),
+  );
+
+  if (!product) {
+    return { error: "产品不存在" };
+  }
+
+  try {
+    await assertQuota(session.accountId, buffer.byteLength);
+  } catch (error) {
+    if (error instanceof QuotaExceededError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
+  const storageKey = buildStorageKey(session.accountId, "glb", "-model");
+  await storage.save(storageKey, buffer);
+
+  await setAccountContext(session.accountId, () =>
+    db.mediaAsset.create({
+      data: {
+        accountId: session.accountId,
+        productId,
+        kind: "model_3d",
+        storageKey,
+        bytes: BigInt(buffer.byteLength),
+        isPublic: true,
+      },
+    }),
+  );
+
+  await addUsage(session.accountId, buffer.byteLength);
+
+  revalidatePath(`/products/${productId}`);
+  return { success: "3D 模型已上传" };
+}

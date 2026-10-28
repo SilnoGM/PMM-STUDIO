@@ -43,6 +43,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
               </Link>
             ) : null}
           </nav>
+          <form action="/search" className="flex items-center gap-2">
+            <input
+              name="q"
+              placeholder="搜索型号 / 产品 / 资料"
+              className="w-48 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-slate-500"
+            />
+          </form>
+
           <div className="flex items-center gap-3 text-sm text-slate-600">
             <span>{session.displayName || session.email}</span>
             <form action={logout}>

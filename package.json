@@ -17,6 +17,7 @@
     "db:seed": "tsx scripts/seed-admin.ts"
   },
   "dependencies": {
+    "@google/model-viewer": "^4.4.0",
     "@prisma/client": "6.19.3",
     "@tiptap/pm": "^3.32.0",
     "@tiptap/react": "^3.32.0",

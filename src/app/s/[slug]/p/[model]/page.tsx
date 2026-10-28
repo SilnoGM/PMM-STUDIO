@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ModelViewer } from "@/components/model-viewer";
 import { VideoEmbed } from "@/components/video-embed";
 import { PUBLIC_TEXT } from "@/lib/i18n/public-strings";
 import { pickImageUrl, absoluteUrl } from "@/lib/media/url";
@@ -68,6 +69,7 @@ export default async function PublicProductPage({
 
   const images = product.media.filter((asset) => asset.kind === "image");
   const videos = product.media.filter((asset) => asset.kind.startsWith("video_"));
+  const models = product.media.filter((asset) => asset.kind === "model_3d");
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -189,6 +191,19 @@ export default async function PublicProductPage({
                 />
               );
             })}
+          </div>
+        </section>
+      ) : null}
+
+      {models.length > 0 ? (
+        <section className="mt-12">
+          <h2 className="mb-3 text-sm font-medium text-slate-500">{PUBLIC_TEXT.model3d}</h2>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            {models.map((asset) =>
+              asset.storageKey ? (
+                <ModelViewer key={asset.id} src={publicUrl(asset.storageKey)} alt={product.nameHant} />
+              ) : null,
+            )}
           </div>
         </section>
       ) : null}

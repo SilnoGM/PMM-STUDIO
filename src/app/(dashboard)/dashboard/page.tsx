@@ -49,6 +49,27 @@ export default async function DashboardPage() {
           <dd className="mt-1 text-sm">{account?.isAdmin ? "管理员" : "普通账号"}</dd>
         </div>
       </dl>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold">数据导出</h2>
+        <div className="flex flex-wrap gap-3 text-sm">
+          <a
+            href="/api/export/products.csv"
+            className="rounded-md border border-slate-300 px-3 py-2 hover:bg-slate-100"
+          >
+            导出产品清单（CSV）
+          </a>
+          <a
+            href="/api/export/backup.json"
+            className="rounded-md border border-slate-300 px-3 py-2 hover:bg-slate-100"
+          >
+            导出完整备份（JSON）
+          </a>
+        </div>
+        <p className="text-xs text-slate-500">
+          JSON 只含数据库记录；图片与视频文件在服务器的 data/uploads 目录，需一并备份。
+        </p>
+      </section>
     </div>
   );
 }

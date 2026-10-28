@@ -6,6 +6,7 @@ import { mediaThumbUrl } from "@/lib/media/url";
 import { deleteMedia } from "../actions";
 import { ProductForm } from "../product-form";
 import { UploadForm } from "../upload-form";
+import { ModelUploadForm } from "../model-upload-form";
 import { VideoUploadForm, YouTubeForm } from "../video-forms";
 
 export default async function ProductDetailPage({
@@ -38,6 +39,7 @@ export default async function ProductDetailPage({
   const specs = (product.specs ?? {}) as Record<string, string>;
   const images = product.media.filter((asset) => asset.kind === "image");
   const videos = product.media.filter((asset) => asset.kind.startsWith("video_"));
+  const models = product.media.filter((asset) => asset.kind === "model_3d");
 
   return (
     <div className="flex flex-col gap-8">
@@ -167,6 +169,41 @@ export default async function ProductDetailPage({
           <VideoUploadForm productId={product.id} />
           <YouTubeForm productId={product.id} />
         </div>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold">3D 模型（{models.length}）</h2>
+
+        {models.length > 0 ? (
+          <ul className="flex flex-col gap-2">
+            {models.map((asset) => (
+              <li
+                key={asset.id}
+                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm"
+              >
+                <span className="font-mono text-xs text-slate-500">
+                  {asset.storageKey?.split("/").pop()}
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500">
+                    {asset.bytes ? `${(Number(asset.bytes) / 1024 / 1024).toFixed(2)} MB` : "-"}
+                  </span>
+                  <form action={deleteMedia}>
+                    <input type="hidden" name="id" value={asset.id} />
+                    <input type="hidden" name="productId" value={product.id} />
+                    <button type="submit" className="text-xs text-red-600 hover:underline">
+                      删除
+                    </button>
+                  </form>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-400">还没有 3D 模型</p>
+        )}
+
+        <ModelUploadForm productId={product.id} />
       </section>
     </div>
   );
