@@ -25,6 +25,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <Link href="/dashboard" className="text-slate-600 hover:text-slate-900">
               工作台
             </Link>
+            <Link href="/products" className="text-slate-600 hover:text-slate-900">
+              产品
+            </Link>
+            <Link href="/categories" className="text-slate-600 hover:text-slate-900">
+              分类
+            </Link>
+            <Link href="/spec-fields" className="text-slate-600 hover:text-slate-900">
+              参数字典
+            </Link>
             {session.isAdmin ? (
               <Link href="/admin/accounts" className="text-slate-600 hover:text-slate-900">
                 账号管理

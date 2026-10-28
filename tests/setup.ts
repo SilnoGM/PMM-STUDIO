@@ -18,3 +18,6 @@ if (testDatabaseUrl === process.env.DATABASE_URL) {
 }
 
 process.env.DATABASE_URL = testDatabaseUrl;
+
+// 上传目录固定在仓库内，避免测试污染真实 data/uploads
+process.env.UPLOAD_DIR = `${process.cwd()}/data/test-uploads`;

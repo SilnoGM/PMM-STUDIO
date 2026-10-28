@@ -32,7 +32,7 @@
 
 ## 项目状态
 
-**P0 已完成：工程骨架、账号隔离、登录与账号管理可运行；产品 / 媒体 / 资料模块待 P1 起实现。**
+**P1 已完成：产品库与媒体素材可正常录入使用；资料模块与公开展示页待 P2 / P3。**
 
 已完成的内容：
 
@@ -42,8 +42,14 @@
 | 数据模型 | Prisma + PostgreSQL，6 张表（accounts / categories / spec_fields / products / media_assets / materials） |
 | 账号隔离 | Prisma 扩展 + AsyncLocalStorage 强制注入 `account_id`；禁用裸 SQL 与 `findUnique` |
 | 鉴权 | Auth.js v5 凭据登录（argon2），管理员手动建号 |
-| 部署 | Dockerfile（含 ffmpeg）、docker-compose、Caddy 自动 HTTPS |
-| 验收测试 | 跨账号越权返回 404（而非 403），未登录返回 401 |
+| 产品库 | 分类与参数字典（均含简繁双语）、产品 CRUD、参数以 JSONB 存储 |
+| 媒体素材 | 上传即生成主图（长边 3000px）+ 1600/800/320 三档 WebP，画廊预览与删除 |
+| 配额 | 5 GB/人，上传前按「主图 + 衍生图」实际体积校验；超限拒绝且不落盘 |
+| 简繁转换 | OpenCC `twp`（台湾用语）自动生成繁体，型号与 slug 不参与转换 |
+| 部署 | Dockerfile（含静态 ffmpeg）、docker-compose、Caddy 自动 HTTPS |
+| 测试 | 17 个集成测试，覆盖越权 404、上下文强制、配额拦截、图片管线 |
+
+> 未公开的产品与素材只存在于后台；面向客户的 `/s/<slug>` 公开页在 P3 实现。
 
 ## 快速开始（本地开发）
 
@@ -89,12 +95,18 @@ PMM Studio/
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/login/      # 登录
-│   │   ├── (dashboard)/       # 后台（需登录）
+│   │   ├── (dashboard)/       # 后台：产品 / 分类 / 参数字典
 │   │   ├── admin/accounts/    # 管理员建号
+│   │   ├── media/[...key]/    # 开发期上传文件代理（生产由 Caddy 直出）
 │   │   └── api/               # 鉴权与业务接口
 │   ├── lib/
-│   │   ├── auth/              # 会话读取、表单 schema
-│   │   └── db/                # Prisma 客户端、账号作用域扩展
+│   │   ├── auth/              # 会话读取、表单 schema、守卫
+│   │   ├── catalog/           # 产品 / 分类 / 参数校验 schema
+│   │   ├── db/                # Prisma 客户端、账号作用域扩展
+│   │   ├── i18n/              # OpenCC 简繁转换
+│   │   ├── media/             # sharp 图片管线
+│   │   ├── quota/             # 配额校验与用量记账
+│   │   └── storage/           # 存储抽象层（本地磁盘）
 │   └── types/                 # 类型增强
 ├── tests/                     # 隔离与越权测试
 ├── Dockerfile / docker-compose.yml / Caddyfile
