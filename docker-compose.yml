@@ -1,0 +1,75 @@
+# 生产编排
+# 拓扑：caddy(443) → app(3000) → db(5432)；上传目录由 app 写入、caddy 只读服务
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pmm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 中设置 POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-pmm}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pmm} -d ${POSTGRES_DB:-pmm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # 不暴露端口：数据库只允许容器网络内访问
+
+  # 一次性迁移任务；app 等它成功退出后才启动，避免新代码配旧 schema
+  migrate:
+    build:
+      context: .
+      target: builder
+    command: ["pnpm", "exec", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pmm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pmm}?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pmm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pmm}?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:?请在 .env 中设置 AUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      PUBLIC_BASE_URL: https://${DOMAIN:?请在 .env 中设置 DOMAIN}
+    volumes:
+      - uploads:/app/data/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # 与 app 共享上传目录，只读挂载；/media/* 由 Caddy 直接服务以支持 Range
+      - uploads:/srv/data/uploads:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:

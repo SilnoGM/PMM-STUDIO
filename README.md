@@ -32,20 +32,72 @@
 
 ## 项目状态
 
-**早期阶段：已完成命名、模块边界与技术选型，尚无代码实现。**
+**P0 已完成：工程骨架、账号隔离、登录与账号管理可运行；产品 / 媒体 / 资料模块待 P1 起实现。**
 
-技术栈已确定：Next.js 15 + TypeScript + Prisma + PostgreSQL 16，Docker Compose 部署；面向 2 个账号、40 GB 磁盘，后台简体中文、公开页台湾繁体。详见[技术选型方案](docs/技术选型方案.md)。
+已完成的内容：
 
-当前仓库只有文档，没有可构建或可运行的产物，因此暂无安装、启动与测试命令；工程初始化（P0）后会在本节补充。
+| 能力 | 说明 |
+|---|---|
+| 工程骨架 | Next.js 15（App Router）+ TypeScript strict + Tailwind v4 |
+| 数据模型 | Prisma + PostgreSQL，6 张表（accounts / categories / spec_fields / products / media_assets / materials） |
+| 账号隔离 | Prisma 扩展 + AsyncLocalStorage 强制注入 `account_id`；禁用裸 SQL 与 `findUnique` |
+| 鉴权 | Auth.js v5 凭据登录（argon2），管理员手动建号 |
+| 部署 | Dockerfile（含 ffmpeg）、docker-compose、Caddy 自动 HTTPS |
+| 验收测试 | 跨账号越权返回 404（而非 403），未登录返回 401 |
+
+## 快速开始（本地开发）
+
+```bash
+# 1. 起开发数据库（PostgreSQL 16，端口 5433）
+docker compose -f docker-compose.dev.yml up -d
+
+# 2. 配置环境变量
+cp .env.example .env        # 填入 DATABASE_URL / TEST_DATABASE_URL / AUTH_SECRET / ADMIN_*
+
+# 3. 安装依赖、迁移、创建管理员
+pnpm install
+pnpm db:migrate
+pnpm db:seed
+
+# 4. 启动
+pnpm dev                    # http://localhost:3000
+```
+
+常用命令：
+
+| 命令 | 作用 |
+|---|---|
+| `pnpm dev` | 开发服务器（Turbopack） |
+| `pnpm build` | 生产构建（standalone 输出） |
+| `pnpm test` | 集成测试，跑真实 PostgreSQL，会清空测试库 |
+| `pnpm typecheck` / `pnpm lint` | 类型检查与 ESLint（含隔离红线规则） |
+| `pnpm db:migrate` / `pnpm db:deploy` | 开发迁移 / 生产迁移 |
+| `pnpm db:seed` | 创建或重置管理员账号 |
+
+测试库需要在首次运行前手动创建：`docker exec -it <pg容器> psql -U postgres -c 'CREATE DATABASE pmm_test'`。
 
 ## 目录结构
 
 ```text
 PMM Studio/
-├── docs/
-│   ├── 项目命名方案.md    # 命名来源、模块边界、标识规范、术语表
-│   └── 技术选型方案.md    # 方案对比、技术栈、隔离与配额设计、双语模型、部署
-├── .gitignore
+├── docs/                      # 命名方案、技术选型
+├── prisma/
+│   ├── schema.prisma          # 数据模型
+│   └── migrations/            # 迁移文件（必须入库）
+├── scripts/
+│   └── seed-admin.ts          # 创建首个管理员
+├── src/
+│   ├── app/
+│   │   ├── (auth)/login/      # 登录
+│   │   ├── (dashboard)/       # 后台（需登录）
+│   │   ├── admin/accounts/    # 管理员建号
+│   │   └── api/               # 鉴权与业务接口
+│   ├── lib/
+│   │   ├── auth/              # 会话读取、表单 schema
+│   │   └── db/                # Prisma 客户端、账号作用域扩展
+│   └── types/                 # 类型增强
+├── tests/                     # 隔离与越权测试
+├── Dockerfile / docker-compose.yml / Caddyfile
 └── README.md
 ```
 

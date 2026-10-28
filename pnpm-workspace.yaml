@@ -1,0 +1,9 @@
+# pnpm 11 把依赖构建白名单放在这里；Prisma 引擎与 argon2 原生模块必须执行安装脚本，
+# 否则运行时会因为缺少二进制而失败。
+allowBuilds:
+  "@prisma/client": true
+  "@prisma/engines": true
+  argon2: true
+  esbuild: true
+  prisma: true
+  unrs-resolver: true

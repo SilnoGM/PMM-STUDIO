@@ -21,3 +21,15 @@ build/
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Prisma / 本地存储
+prisma/dev.db
+data/
+.pnpm-store/
+coverage/

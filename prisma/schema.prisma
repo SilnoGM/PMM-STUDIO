@@ -1,0 +1,146 @@
+// PMM Studio 数据模型
+// 约定见 docs/技术选型方案.md §4.1：
+// - 业务表一律带 account_id，账号隔离由 src/lib/db 的扩展统一注入
+// - 简繁双语采用双列（*_hans / *_hant），型号与 slug 不参与转换
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  passwordHash      String   @map("password_hash")
+  slug              String   @unique
+  displayName       String   @map("display_name")
+  status            String   @default("active")
+  isAdmin           Boolean  @default(false) @map("is_admin")
+  // 5 GiB 默认配额；BigInt 因为字节数会超过 Int 上限
+  storageQuotaBytes BigInt   @default(5368709120) @map("storage_quota_bytes")
+  storageUsedBytes  BigInt   @default(0) @map("storage_used_bytes")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  categories  Category[]
+  specFields  SpecField[]
+  products    Product[]
+  mediaAssets MediaAsset[]
+  materials   Material[]
+
+  @@map("accounts")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  accountId String   @map("account_id")
+  nameHans  String   @map("name_hans")
+  nameHant  String   @map("name_hant")
+  sort      Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@index([accountId])
+  @@map("categories")
+}
+
+// 参数字典：表头文案需要简繁双语（如「内存 / 記憶體」）
+model SpecField {
+  id        String  @id @default(cuid())
+  accountId String  @map("account_id")
+  key       String
+  labelHans String  @map("label_hans")
+  labelHant String  @map("label_hant")
+  unit      String?
+  type      String  @default("text")
+  sort      Int     @default(0)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, key])
+  @@index([accountId])
+  @@map("spec_fields")
+}
+
+model Product {
+  id           String   @id @default(cuid())
+  accountId    String   @map("account_id")
+  categoryId   String?  @map("category_id")
+  nameHans     String   @map("name_hans")
+  nameHant     String   @map("name_hant")
+  modelNo      String   @map("model_no")
+  specs        Json     @default("{}")
+  isPublic     Boolean  @default(false) @map("is_public")
+  sort         Int      @default(0)
+  hantReviewed Boolean  @default(false) @map("hant_reviewed")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  account   Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category  Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  media     MediaAsset[]
+  materials Material[]
+
+  @@unique([accountId, modelNo])
+  @@index([accountId])
+  @@map("products")
+}
+
+model MediaAsset {
+  id          String   @id @default(cuid())
+  accountId   String   @map("account_id")
+  productId   String?  @map("product_id")
+  // image | video_local | video_external | model_3d
+  kind        String
+  // 外链时使用：youtube | vimeo
+  provider    String?
+  externalId  String?  @map("external_id")
+  // 本地文件：相对 data/uploads 的路径
+  storageKey  String?  @map("storage_key")
+  posterKey   String?  @map("poster_key")
+  bytes       BigInt?
+  width       Int?
+  height      Int?
+  durationSec Float?   @map("duration_sec")
+  variants    Json     @default("{}")
+  // processing | ready | failed
+  status      String   @default("ready")
+  isPublic    Boolean  @default(false) @map("is_public")
+  sort        Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  account Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([productId])
+  @@map("media_assets")
+}
+
+model Material {
+  id           String   @id @default(cuid())
+  accountId    String   @map("account_id")
+  productId    String?  @map("product_id")
+  titleHans    String   @map("title_hans")
+  titleHant    String   @map("title_hant")
+  slug         String
+  contentHans  String   @default("") @map("content_hans")
+  contentHant  String   @default("") @map("content_hant")
+  isPublic     Boolean  @default(false) @map("is_public")
+  hantReviewed Boolean  @default(false) @map("hant_reviewed")
+  sort         Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  account Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, slug])
+  @@index([accountId])
+  @@map("materials")
+}

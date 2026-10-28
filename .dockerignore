@@ -1,0 +1,17 @@
+# 构建上下文排除项：避免把本机 node_modules 与构建缓存塞进镜像
+node_modules
+.next
+.git
+.github
+data
+uploads
+docs
+tests
+*.log
+.env
+.env.*
+!.env.example
+.pnpm-store
+.cache
+cache
+coverage
