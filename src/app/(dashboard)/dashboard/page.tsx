@@ -27,7 +27,16 @@ export default async function DashboardPage() {
       <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <dt className="text-xs text-slate-500">公开页链接</dt>
-          <dd className="mt-1 font-mono text-sm">/s/{account?.slug ?? "-"}</dd>
+          <dd className="mt-1 font-mono text-sm">
+            <a
+              href={`/s/${account?.slug ?? ""}`}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:underline"
+            >
+              /s/{account?.slug ?? "-"}
+            </a>
+          </dd>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <dt className="text-xs text-slate-500">存储配额</dt>
