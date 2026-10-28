@@ -6,6 +6,7 @@ export const PUBLIC_TEXT = {
   products: "產品",
   materials: "技術文件",
   specs: "規格",
+  videos: "影片",
   relatedMaterials: "相關文件",
   model: "型號",
   category: "分類",

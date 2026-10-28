@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PUBLIC_TEXT } from "@/lib/i18n/public-strings";
-import { pickImageUrl } from "@/lib/media/url";
+import { mediaThumbUrl } from "@/lib/media/url";
 import { getPublicAccount, publicQueries } from "@/lib/public/queries";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +57,10 @@ export default async function PublicHomePage({ params }: { params: Promise<{ slu
               <h2 className="mb-3 text-sm font-medium text-slate-500">{categoryName}</h2>
               <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {items.map((product) => {
-                  const imageUrl = pickImageUrl(product.media[0], 800);
+                  // 卡片封面优先用图片；只有视频时退到视频封面
+                  const cover =
+                    product.media.find((asset) => asset.kind === "image") ?? product.media[0];
+                  const imageUrl = mediaThumbUrl(cover, 800);
 
                   return (
                     <li key={product.id}>

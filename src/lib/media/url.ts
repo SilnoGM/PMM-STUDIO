@@ -40,3 +40,30 @@ export function absoluteUrl(path: string | null): string | undefined {
   const base = process.env.PUBLIC_BASE_URL ?? "";
   return base ? `${base.replace(/\/$/, "")}${path}` : undefined;
 }
+
+interface MediaLike extends ImageLike {
+  kind: string;
+  posterKey?: string | null;
+  externalId?: string | null;
+}
+
+/** 统一取封面：图片走多档衍生，视频走封面图（本地封面或 YouTube 缩略图） */
+export function mediaThumbUrl(media: MediaLike | undefined, preferredWidth = 800): string | null {
+  if (!media) {
+    return null;
+  }
+
+  if (media.kind === "image") {
+    return pickImageUrl(media, preferredWidth);
+  }
+
+  if (media.posterKey) {
+    return publicUrl(media.posterKey);
+  }
+
+  if (media.kind === "video_external" && media.externalId) {
+    return `https://i.ytimg.com/vi/${media.externalId}/hqdefault.jpg`;
+  }
+
+  return null;
+}

@@ -37,10 +37,18 @@ function scoped(accountId: string) {
           include: {
             category: { select: { nameHant: true, sort: true } },
             media: {
-              where: { isPublic: true, kind: "image" },
+              where: { isPublic: true },
               orderBy: { sort: "asc" },
-              take: 1,
-              select: { storageKey: true, variants: true, width: true, height: true },
+              select: {
+                id: true,
+                kind: true,
+                storageKey: true,
+                posterKey: true,
+                externalId: true,
+                variants: true,
+                width: true,
+                height: true,
+              },
             },
           },
         }),
@@ -55,7 +63,18 @@ function scoped(accountId: string) {
             media: {
               where: { isPublic: true },
               orderBy: [{ sort: "asc" }, { createdAt: "asc" }],
-              select: { id: true, kind: true, storageKey: true, variants: true, width: true, height: true },
+              select: {
+                id: true,
+                kind: true,
+                storageKey: true,
+                posterKey: true,
+                provider: true,
+                externalId: true,
+                durationSec: true,
+                variants: true,
+                width: true,
+                height: true,
+              },
             },
             materials: {
               where: { isPublic: true },

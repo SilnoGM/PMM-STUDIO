@@ -2,15 +2,11 @@ import { notFound } from "next/navigation";
 
 import { requireAccount } from "@/lib/auth/guard";
 import { db, setAccountContext } from "@/lib/db";
-import { publicUrl } from "@/lib/storage";
-import { deleteProductImage } from "../actions";
+import { mediaThumbUrl } from "@/lib/media/url";
+import { deleteMedia } from "../actions";
 import { ProductForm } from "../product-form";
 import { UploadForm } from "../upload-form";
-
-interface MediaVariant {
-  key?: string;
-  width?: number;
-}
+import { VideoUploadForm, YouTubeForm } from "../video-forms";
 
 export default async function ProductDetailPage({
   params,
@@ -40,6 +36,8 @@ export default async function ProductDetailPage({
   }
 
   const specs = (product.specs ?? {}) as Record<string, string>;
+  const images = product.media.filter((asset) => asset.kind === "image");
+  const videos = product.media.filter((asset) => asset.kind.startsWith("video_"));
 
   return (
     <div className="flex flex-col gap-8">
@@ -75,21 +73,19 @@ export default async function ProductDetailPage({
       />
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold">媒体素材（{product.media.length}）</h2>
+        <h2 className="text-sm font-semibold">图片（{images.length}）</h2>
 
-        {product.media.length > 0 ? (
+        {images.length > 0 ? (
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {product.media.map((asset) => {
-              const variants = (asset.variants ?? {}) as Record<string, MediaVariant>;
-              const thumbKey = variants["800"]?.key ?? asset.storageKey;
+            {images.map((asset) => {
+              const thumbUrl = mediaThumbUrl(asset, 800);
 
               return (
                 <li key={asset.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-                  {thumbKey ? (
-                    // 开发环境由 Next 路由代理，生产由 Caddy 直出
+                  {thumbUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={publicUrl(thumbKey)}
+                      src={thumbUrl}
                       alt={product.nameHans}
                       className="aspect-square w-full object-cover"
                     />
@@ -102,7 +98,7 @@ export default async function ProductDetailPage({
                     <span className="text-xs text-slate-500">
                       {asset.bytes ? `${(Number(asset.bytes) / 1024 / 1024).toFixed(2)} MB` : "-"}
                     </span>
-                    <form action={deleteProductImage}>
+                    <form action={deleteMedia}>
                       <input type="hidden" name="id" value={asset.id} />
                       <input type="hidden" name="productId" value={product.id} />
                       <button type="submit" className="text-xs text-red-600 hover:underline">
@@ -119,6 +115,58 @@ export default async function ProductDetailPage({
         )}
 
         <UploadForm productId={product.id} />
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold">视频（{videos.length}）</h2>
+
+        {videos.length > 0 ? (
+          <ul className="flex flex-col gap-3">
+            {videos.map((asset) => {
+              const poster = mediaThumbUrl(asset, 800);
+
+              return (
+                <li
+                  key={asset.id}
+                  className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-3"
+                >
+                  <div className="h-16 w-28 shrink-0 overflow-hidden rounded bg-slate-100">
+                    {poster ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={poster} alt="视频封面" className="h-full w-full object-cover" />
+                    ) : null}
+                  </div>
+
+                  <div className="min-w-0 flex-1 text-sm">
+                    <p className="font-medium">
+                      {asset.kind === "video_local" ? "本地视频" : "YouTube 外链"}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                      {asset.kind === "video_local"
+                        ? `${Number(asset.bytes ?? 0n) / 1024 / 1024} MB · ${asset.durationSec ?? 0} 秒`
+                        : asset.externalId}
+                    </p>
+                  </div>
+
+                  <form action={deleteMedia}>
+                    <input type="hidden" name="id" value={asset.id} />
+                    <input type="hidden" name="productId" value={product.id} />
+                    <button type="submit" className="text-xs text-red-600 hover:underline">
+                      删除
+                    </button>
+                  </form>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-400">还没有视频</p>
+        )}
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <VideoUploadForm productId={product.id} />
+          <YouTubeForm productId={product.id} />
+        </div>
       </section>
     </div>
   );

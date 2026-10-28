@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { VideoEmbed } from "@/components/video-embed";
 import { PUBLIC_TEXT } from "@/lib/i18n/public-strings";
 import { pickImageUrl, absoluteUrl } from "@/lib/media/url";
+import { publicUrl } from "@/lib/storage";
 import { getPublicAccount, publicQueries } from "@/lib/public/queries";
 
 export const dynamic = "force-dynamic";
@@ -64,6 +66,9 @@ export default async function PublicProductPage({
   const specs = (product.specs ?? {}) as Record<string, string>;
   const specRows = specFields.filter((field) => specs[field.key]);
 
+  const images = product.media.filter((asset) => asset.kind === "image");
+  const videos = product.media.filter((asset) => asset.kind.startsWith("video_"));
+
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <nav className="mb-6 text-sm text-slate-500">
@@ -76,19 +81,19 @@ export default async function PublicProductPage({
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
         <div className="flex flex-col gap-3">
-          {product.media.length > 0 ? (
+          {images.length > 0 ? (
             <>
               <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={pickImageUrl(product.media[0], 1600) ?? ""}
+                  src={pickImageUrl(images[0], 1600) ?? ""}
                   alt={product.nameHant}
                   className="w-full object-cover"
                 />
               </div>
-              {product.media.length > 1 ? (
+              {images.length > 1 ? (
                 <ul className="grid grid-cols-4 gap-2">
-                  {product.media.slice(1).map((asset) => (
+                  {images.slice(1).map((asset) => (
                     <li key={asset.id} className="overflow-hidden rounded border border-slate-200">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -152,6 +157,41 @@ export default async function PublicProductPage({
           ) : null}
         </div>
       </div>
+
+      {videos.length > 0 ? (
+        <section className="mt-12">
+          <h2 className="mb-3 text-sm font-medium text-slate-500">{PUBLIC_TEXT.videos}</h2>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            {videos.map((asset) => {
+              if (asset.kind === "video_external" && asset.externalId) {
+                return (
+                  <VideoEmbed
+                    key={asset.id}
+                    videoId={asset.externalId}
+                    title={product.nameHant}
+                  />
+                );
+              }
+
+              if (!asset.storageKey) {
+                return null;
+              }
+
+              return (
+                <video
+                  key={asset.id}
+                  controls
+                  preload="metadata"
+                  playsInline
+                  poster={asset.posterKey ? publicUrl(asset.posterKey) : undefined}
+                  src={publicUrl(asset.storageKey)}
+                  className="aspect-video w-full rounded-lg border border-slate-200 bg-black"
+                />
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

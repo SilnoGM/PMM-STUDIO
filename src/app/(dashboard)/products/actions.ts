@@ -15,6 +15,13 @@ import {
   removeImageFiles,
   renderImage,
 } from "@/lib/media/image";
+import {
+  InvalidVideoError,
+  VIDEO_MAX_BYTES,
+  parseYouTubeId,
+  transcodeVideo,
+} from "@/lib/media/video";
+import { buildStorageKey, storage } from "@/lib/storage";
 import { QuotaExceededError, addUsage, assertQuota, subtractUsage } from "@/lib/quota";
 
 export interface FormState {
@@ -235,7 +242,7 @@ export async function uploadProductImage(
   return { success: "图片已上传" };
 }
 
-export async function deleteProductImage(formData: FormData): Promise<void> {
+export async function deleteMedia(formData: FormData): Promise<void> {
   const session = await requireAccount();
   const id = String(formData.get("id") ?? "");
   const productId = String(formData.get("productId") ?? "");
@@ -261,4 +268,121 @@ export async function deleteProductImage(formData: FormData): Promise<void> {
   await subtractUsage(session.accountId, Number(asset.bytes ?? 0n));
 
   revalidatePath(`/products/${productId}`);
+}
+
+export async function uploadProductVideo(
+  _previous: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await requireAccount();
+  const productId = String(formData.get("productId") ?? "");
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "请选择视频文件" };
+  }
+  if (!file.type.startsWith("video/")) {
+    return { error: "只支持视频文件" };
+  }
+  if (file.size > VIDEO_MAX_BYTES) {
+    return { error: "单个视频不能超过 200 MB" };
+  }
+
+  const product = await setAccountContext(session.accountId, () =>
+    db.product.findFirst({ where: { id: productId }, select: { id: true } }),
+  );
+
+  if (!product) {
+    return { error: "产品不存在" };
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  let transcoded;
+  try {
+    transcoded = await transcodeVideo(buffer);
+  } catch (error) {
+    if (error instanceof InvalidVideoError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
+  const totalBytes = transcoded.video.byteLength + transcoded.poster.byteLength;
+
+  try {
+    await assertQuota(session.accountId, totalBytes);
+  } catch (error) {
+    if (error instanceof QuotaExceededError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+
+  const videoKey = buildStorageKey(session.accountId, "mp4", "-video");
+  const posterKey = buildStorageKey(session.accountId, "jpg", "-poster");
+
+  await storage.save(videoKey, transcoded.video);
+  await storage.save(posterKey, transcoded.poster);
+
+  await setAccountContext(session.accountId, () =>
+    db.mediaAsset.create({
+      data: {
+        accountId: session.accountId,
+        productId,
+        kind: "video_local",
+        storageKey: videoKey,
+        posterKey,
+        bytes: BigInt(totalBytes),
+        durationSec: transcoded.durationSec,
+        width: transcoded.width,
+        height: transcoded.height,
+        isPublic: true,
+      },
+    }),
+  );
+
+  await addUsage(session.accountId, totalBytes);
+
+  revalidatePath(`/products/${productId}`);
+  return { success: "视频已转码并保存（720p H.264）" };
+}
+
+export async function addYouTubeVideo(
+  _previous: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await requireAccount();
+  const productId = String(formData.get("productId") ?? "");
+  const url = String(formData.get("url") ?? "");
+
+  const externalId = parseYouTubeId(url);
+  if (!externalId) {
+    return { error: "无法识别 YouTube 链接，请粘贴完整视频地址" };
+  }
+
+  const product = await setAccountContext(session.accountId, () =>
+    db.product.findFirst({ where: { id: productId }, select: { id: true } }),
+  );
+
+  if (!product) {
+    return { error: "产品不存在" };
+  }
+
+  // 外链视频不占磁盘，因此不走配额校验
+  await setAccountContext(session.accountId, () =>
+    db.mediaAsset.create({
+      data: {
+        accountId: session.accountId,
+        productId,
+        kind: "video_external",
+        provider: "youtube",
+        externalId,
+        isPublic: true,
+      },
+    }),
+  );
+
+  revalidatePath(`/products/${productId}`);
+  return { success: "已添加 YouTube 视频" };
 }
