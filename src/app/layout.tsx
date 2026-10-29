@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+
+import { DevtoolsZhLoader } from "@/components/devtools-zh-loader";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +16,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-Hans">
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* 仅开发环境：把 Next.js 开发工具浮层翻译成简体中文 */}
+        {process.env.NODE_ENV === "development" ? <DevtoolsZhLoader /> : null}
+      </body>
     </html>
   );
 }
